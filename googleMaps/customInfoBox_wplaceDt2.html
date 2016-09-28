@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+    <title></title>
+    <style>
+    html,
+    body,
+    #canvas-map {
+        width: 100%;
+        height: 100%;
+        background: #333;
+    }
+    </style>
+    <link rel="stylesheet" type="text/css" href="infobox.css">
+</head>
+
+<body>
+    <div id="canvas-map"></div>
+    <!-- 
+PLEASE WATCH IN FULL SCREEN MODE 
+http://codepen.io/emgerold/full/kjivC
+-->
+</body>
+<script type="text/javascript">
+/* An InfoBox is like an info window, but it displays
+ * under the marker, opens quicker, and has flexible styling.
+ * @param {GLatLng} latlng Point to place bar at
+ * @param {Map} map The map on which to display this InfoBox.
+ * @param {Object} opts Passes configuration options - content,
+ * offsetVertical, offsetHorizontal, className, height, width
+ */
+
+function InfoBox(opts) {
+    google.maps.OverlayView.call(this);
+    this.latlng_ = opts.latlng;
+    this.map_ = opts.map;
+    this.content = opts.content;
+    this.offsetVertical_ = -195;
+    this.offsetHorizontal_ = 5;
+    this.height_ = 165;
+    this.width_ = 266;
+    var me = this;
+    this.boundsChangedListener_ =
+        google.maps.event.addListener(this.map_, "bounds_changed", function() {
+            return me.panMap.apply(me);
+        });
+    // Once the properties of this OverlayView are initialized, set its map so
+    // that we can display it. This will trigger calls to panes_changed and
+    // draw.
+    this.setMap(this.map_);
+}
+/* InfoBox extends GOverlay class from the Google Maps API
+ */
+function createInfoBox() {
+    InfoBox.prototype = new google.maps.OverlayView();
+    // Creates the DIV representing this InfoBox
+    InfoBox.prototype.remove = function() {
+        if (this.div_) {
+            this.div_.parentNode.removeChild(this.div_);
+            this.div_ = null;
+        }
+    };
+    // Redraw the Bar based on the current projection and zoom level
+
+    InfoBox.prototype.draw = function() {
+        // Creates the element if it doesn't exist already.
+        this.createElement();
+        if (!this.div_) return;
+        // Calculate the DIV coordinates of two opposite corners of our bounds to
+        // get the size and position of our Bar
+        var pixPosition = this.getProjection().fromLatLngToDivPixel(this.latlng_);
+        if (!pixPosition) return;
+        // Now position our DIV based on the DIV coordinates of our bounds
+        this.div_.style.width = this.width_ + "px";
+        this.div_.style.left = (pixPosition.x + this.offsetHorizontal_) + "px";
+        this.div_.style.height = this.height_ + "px";
+        this.div_.style.top = (pixPosition.y + this.offsetVertical_) + "px";
+        this.div_.style.display = 'block';
+    };
+    /* Creates the DIV representing this InfoBox in the floatPane. If the panes
+     * object, retrieved by calling getPanes, is null, remove the element from the
+     * DOM. If the div exists, but its parent is not the floatPane, move the div
+     * to the new pane.
+     * Called from within draw. Alternatively, this can be called specifically on
+     * a panes_changed event.
+     */
+    InfoBox.prototype.createElement = function() {
+            var panes = this.getPanes();
+            var div = this.div_;
+            if (!div) {
+                // This does not handle changing panes. You can set the map to be null and
+                // then reset the map to move the div.
+                div = this.div_ = document.createElement("div");
+                div.className = "infobox"
+                var contentDiv = document.createElement("div");
+                contentDiv.className = "content"
+                contentDiv.innerHTML = this.content;
+                var closeBox = document.createElement("div");
+                closeBox.className = "close";
+                closeBox.innerHTML = "x";
+                div.appendChild(closeBox);
+
+                function removeInfoBox(ib) {
+                    return function() {
+                        ib.setMap(null);
+                    };
+                }
+                google.maps.event.addDomListener(closeBox, 'click', removeInfoBox(this));
+                div.appendChild(contentDiv);
+                div.style.display = 'none';
+                panes.floatPane.appendChild(div);
+                this.panMap();
+            } else if (div.parentNode != panes.floatPane) {
+                // The panes have changed. Move the div.
+                div.parentNode.removeChild(div);
+                panes.floatPane.appendChild(div);
+            } else {
+                // The panes have not changed, so no need to create or move the div.
+            }
+        }
+        /* Pan the map to fit the InfoBox.
+         */
+    InfoBox.prototype.panMap = function() {
+        // if we go beyond map, pan map
+        var map = this.map_;
+        var bounds = map.getBounds();
+        if (!bounds) return;
+        // The position of the infowindow
+        var position = this.latlng_;
+        // The dimension of the infowindow
+        var iwWidth = this.width_;
+        var iwHeight = this.height_;
+        // The offset position of the infowindow
+        var iwOffsetX = this.offsetHorizontal_;
+        var iwOffsetY = this.offsetVertical_;
+        // Padding on the infowindow
+        var padX = 40;
+        var padY = 40;
+        // The degrees per pixel
+        var mapDiv = map.getDiv();
+        var mapWidth = mapDiv.offsetWidth;
+        var mapHeight = mapDiv.offsetHeight;
+        var boundsSpan = bounds.toSpan();
+        var longSpan = boundsSpan.lng();
+        var latSpan = boundsSpan.lat();
+        var degPixelX = longSpan / mapWidth;
+        var degPixelY = latSpan / mapHeight;
+        // The bounds of the map
+        var mapWestLng = bounds.getSouthWest().lng();
+        var mapEastLng = bounds.getNorthEast().lng();
+        var mapNorthLat = bounds.getNorthEast().lat();
+        var mapSouthLat = bounds.getSouthWest().lat();
+        // The bounds of the infowindow
+        var iwWestLng = position.lng() + (iwOffsetX - padX) * degPixelX;
+        var iwEastLng = position.lng() + (iwOffsetX + iwWidth + padX) * degPixelX;
+        var iwNorthLat = position.lat() - (iwOffsetY - padY) * degPixelY;
+        var iwSouthLat = position.lat() - (iwOffsetY + iwHeight + padY) * degPixelY;
+        // calculate center shift
+        var shiftLng =
+            (iwWestLng < mapWestLng ? mapWestLng - iwWestLng : 0) +
+            (iwEastLng > mapEastLng ? mapEastLng - iwEastLng : 0);
+        var shiftLat =
+            (iwNorthLat > mapNorthLat ? mapNorthLat - iwNorthLat : 0) +
+            (iwSouthLat < mapSouthLat ? mapSouthLat - iwSouthLat : 0);
+        // The center of the map
+        var center = map.getCenter();
+        // The new map center
+        var centerX = center.lng() - shiftLng;
+        var centerY = center.lat() - shiftLat;
+        // center the map to the new shifted center
+        map.setCenter(new google.maps.LatLng(centerY, centerX));
+        // Remove the listener after panning is complete.
+        google.maps.event.removeListener(this.boundsChangedListener_);
+        this.boundsChangedListener_ = null;
+    };
+}
+
+var map, service;
+var imagePIN = new Image();
+    imagePIN.src = "pin.png";
+var arrPlaceID = new Array();
+var destinationsArr = new Array();
+var contentName = new Array();
+var contentAddress = new Array();
+var contentPhone = new Array();
+var contentDistance = new Array();
+/*var content = new Array();
+ */
+var address = "Lisboa";
+/*var distance = new Array();*/
+
+function initialize() {
+    map = new google.maps.Map(document.getElementById('canvas-map'), {
+        zoom: 15,
+    });
+    service = new google.maps.places.PlacesService(map);
+    serviceDMS = new google.maps.DistanceMatrixService;
+
+    var addressCenter;
+
+    var geocoder = new google.maps.Geocoder();
+    geocoder.geocode({
+        'address': address
+    }, function(results, status) {
+        if (status == google.maps.GeocoderStatus.OK) {
+            map.setCenter(results[0].geometry.location);
+            seachPharmacy(results[0].geometry.location, map);
+        } else {
+            console.log("Geocode was not successful for the following reason: " + status);
+        }
+    });
+    createInfoBox({
+        phone: ""
+    });
+}
+
+function seachPharmacy(addressLocation, oMap) {
+    service.nearbySearch({
+        location: addressLocation,
+        radius: 500,
+        types: ['pharmacy'],
+    }, function callback(place, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+            for (var i = 0; i < place.length; i++) {
+                arrPlaceID.push(place[i].place_id);
+            }
+            createList(arrPlaceID)
+        }
+    });
+}
+
+function createList(arrPlaceID) {
+    for (i = 0; i < arrPlaceID.length; i++) {
+        service.getDetails({
+            placeId: arrPlaceID[i]
+        }, function(placeDET, statusDET) {
+            if (statusDET === google.maps.places.PlacesServiceStatus.OK) {
+                contentName.push(placeDET.name);
+                contentAddress.push(placeDET.formatted_address != undefined ? placeDET.formatted_address : "");
+                contentPhone.push(placeDET.formatted_phone_number != undefined ? placeDET.formatted_phone_number : "");
+                destinationsArr.push(placeDET.geometry.location);
+            } else {}
+        })
+    }
+    calcDistance(destinationsArr);
+    return true;
+}
+
+function calcDistance(oPlace) {
+    var oDistance;
+    var serviceDMS = new google.maps.DistanceMatrixService;
+    serviceDMS.getDistanceMatrix({
+        origins: [address],
+        destinations: oPlace,
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.IMPERIAL,
+        avoidHighways: false,
+        avoidTolls: false
+    }, function(response, statusDMS) {
+        if (statusDMS === google.maps.DistanceMatrixStatus.OK) {
+            for (var i = 0; i < response.originAddresses.length; i++) {
+                var originAdd = response.originAddresses[i];
+                var rowsElem = response.rows[i].elements;
+                for (var j = 0; j < rowsElem.length; j++) {
+                    contentDistance.push((rowsElem[j].distance.value / 1609.34).toFixed(1))
+                }
+            }
+            markerMap();
+            return true;
+        } else {
+            setInterval(calcDistance(oPlace), 500)
+            return false;
+        }
+    });
+    console.log(contentName)
+    console.log(contentPhone)
+    console.log(contentAddress)
+    console.log(contentDistance)
+        /*console.log(destinationsArr)*/
+}
+
+function createMarker(place, number) {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(imagePIN, 0, 0);
+        ctx.font = "10px Arial";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.fillText(number +1, 8, 13);
+        var image = {
+            url: canvas.toDataURL(),
+            //Image Size
+            size: new google.maps.Size(25, 25),
+            // The origin for this image is (0, 0).
+            origin: new google.maps.Point(0, 0),
+            // The anchor for this image is the base of the flagpole.
+            anchor: new google.maps.Point(25, 15)
+        };
+        // Shapes define the clickable region of the icon. The type defines an HTML
+        // <area> element 'poly' which traces out a polygon as a series of X,Y points.
+        // The final coordinate closes the poly by connecting to the first coordinate.
+        var shape = {
+            coords: [1, 1, 1, 20, 18, 20, 18, 1],
+            type: 'poly'
+        };
+        /*var placeLoc = place.geometry.location;*/
+        var marker = new google.maps.Marker({
+            ID: number,
+            placeID: arrPlaceID[number],
+            map: map,
+            /*position: place.geometry.location,*/
+            position: place,
+            icon: image,
+            shape: shape,
+        });
+        var infowindow = new google.maps.InfoWindow();
+        google.maps.event.addListener(marker, 'click', function() {
+            contentDiv(this.placeID, this.getPosition(), this.ID)
+            /*infowindow.setContent(place.name + "<br>" + place.vicinity);*/
+            /*infowindow.open(map, this);*/
+        });
+    }
+
+function markerMap() {
+    /*for (var i = 0; i < destinationsArr.length; i++) {*/
+    for (var i = 0; i < 5; i++) {
+        createMarker(destinationsArr[i], i)
+        /*var marker = new google.maps.Marker({
+            ID: i,
+            map: map,
+            position: destinationsArr[i],
+            
+        });
+        google.maps.event.addListener(marker, 'click', function(e) {
+            contentDiv(this.placeID, this.getPosition(), this.ID)
+        });*/
+    }
+}
+
+function contentDiv(placeID, pos, ID) {
+    service.getDetails({
+        placeId: placeID
+    }, function(placeDET, statusDET) {
+        console.log(ID)
+        if (statusDET === google.maps.places.PlacesServiceStatus.OK) {
+            var content = '<div>' + placeDET.name + '</div><div>' + '</div>' + placeDET.formatted_address + '<div>' + placeDET.formatted_phone_number + '</div><div>' + contentDistance[ID] + ' Miles Away</div><div></div>'
+            var infoBox = new InfoBox({
+                map: map,
+                latlng: pos,
+                content: content
+            });
+        }
+    });
+}
+
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ5hZRx7Sh3QOV0O_ds6pZ3MhS7RAZCB0&signed_in=true&libraries=places&callback=initialize"></script>
+
+</html>

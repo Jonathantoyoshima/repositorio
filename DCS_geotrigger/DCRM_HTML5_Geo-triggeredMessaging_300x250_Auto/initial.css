@@ -1,0 +1,85 @@
+@charset "UTF-8";
+
+/* apply a natural box layout model to all elements */
+*, *:before, *:after {
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#container {
+  font-family: 'Oswald', sans-serif;
+  font-size: 21px;
+  position: relative;
+  width: 300px;
+  height: 250px;
+  border: 1px solid #999;
+  overflow: hidden;
+}
+
+#loader {
+  text-align: center;
+  line-height: 250px;
+}
+
+#content > div {
+  position: absolute;
+}
+
+#background {
+  width: 300px;
+  height: 250px;
+}
+
+#headline, #subline {
+  font-weight: 500;
+  line-height: 26px
+}
+
+#headline {
+  font-size: 23px;
+  top: 17px;
+  left: 18px;
+}
+
+#subline {
+  color: #FFFFFF;
+  font-size: 23px;
+  top: 90px;
+  left: 15px;
+}
+
+#content.show {
+  display: block;
+}
+
+#content.hide, #loader.hide {
+  display: none;
+}
+
+#loader.show {
+  display: block;
+}
+
+#button {
+  position: absolute;
+  left: 15px;
+  bottom: 15px;
+  cursor: pointer;
+}
+
+#cta {
+  font-size: 20px;
+  left: 15px;
+  bottom: 15px;
+  cursor: pointer;
+  padding: 1px 7px 0px 5px;
+  color: #FFFFFF;
+j

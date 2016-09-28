@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Complex icons</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <style>
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    #map {
+        float: right;
+        width: 80%;
+        height: 100%;
+    }
+    
+    #name {
+        font-weight: 'Bold';
+        font-size: 20;
+    }
+    
+    .mapIconLabel {
+        font-size: 15px;
+        font-weight: bold;
+        color: #000000;
+        font-family: 'DINNextRoundedLTProMediumRegular';
+    }
+    
+    #list {
+        float: left;
+        height: 100%;
+        width: 20%;
+        background-color: #00F;
+    }
+    .placeName{        
+    }
+    </style>
+</head>
+
+<body>
+    <div id=list></div>
+    <div id="map"></div>
+    <script>
+    var address = "Rua Mostardeiro 777";
+    var map;
+
+    function initMap() {
+        var infowindow = new google.maps.InfoWindow();
+        var geocoder = new google.maps.Geocoder();
+        geocoder.geocode({
+            'address': address
+        }, function(results, status) {
+            if (status == google.maps.GeocoderStatus.OK) {
+                var pivot = results[0].geometry.location;
+                var service = new google.maps.places.PlacesService(map);
+
+                map.setCenter(pivot);
+
+                service.nearbySearch({
+                    location: pivot,
+                    radius: 500,
+                    types: ['pharmacy']
+                }, callback);
+
+            } else {
+                console.log("Geocode was not successful for the following reason: " + status);
+            }
+        });
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 18,
+            scrollwheel: false,
+            panControl: false,
+        });
+    }
+
+    function callback(results, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+            for (var i = 0; i < results.length; i++) {
+                createMarker(results[i], i + 1);
+            }
+        }
+    };
+
+    var imagePIN = new Image();
+    imagePIN.src = "pin.png";
+
+    function createMarker(place, number) {
+        $("#list").remove()
+        $('#list').append(
+            '<div id="number_results">'+number+'</div>'+
+            '<div id="addres_results"><p>'+place.name+'</p>'+
+                                     '<p>'+place.vicinity+'</p>'+
+                                /*<p>0.3 Miles Away</p>*/
+                            '</div>'
+                            /*<div id="directions">
+                                <div id="box_directions">Directions</div>
+                                <p>2029448671</p>
+                            </div>*/
+            );
+
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(imagePIN, 0, 0);
+        ctx.font = "10px Arial";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.fillText(number, 8, 13);
+
+        var image = {
+            /*url: 'images/beachflag.png',*/
+            url: canvas.toDataURL(),
+            //Image Size
+            size: new google.maps.Size(50, 50),
+            // The origin for this image is (0, 0).
+            origin: new google.maps.Point(-15, 0),
+            // The anchor for this image is the base of the flagpole.
+            anchor: new google.maps.Point(0, 0)
+        };
+
+        var placeLoc = place.geometry.location;
+        var marker = new google.maps.Marker({
+            map: map,
+            position: place.geometry.location,
+            icon: image,
+            draggable: false,
+            raiseOnDrag: false,
+        });
+        var infowindow = new google.maps.InfoWindow();
+        google.maps.event.addListener(marker, 'click', function() {
+            infowindow.setContent('<p id="name">' + place.name + '</p>' + '<p id="address">' + place.vicinity + '</p>');
+            infowindow.open(map, this);
+        });
+    }
+
+
+
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZ5hZRx7Sh3QOV0O_ds6pZ3MhS7RAZCB0&signed_in=true&libraries=places&callback=initMap"></script>
+</body>
+
+</html>
